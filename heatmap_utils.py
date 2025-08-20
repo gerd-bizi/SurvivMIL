@@ -11,7 +11,6 @@ from math import floor
 import matplotlib.pyplot as plt
 from dataset_modules.wsi_dataset import Wsi_Region
 from utils.transform_utils import get_eval_transforms
-import h5py
 from wsi_core.WholeSlideImage import WholeSlideImage
 from scipy.stats import percentileofscore
 import math

@@ -5,7 +5,7 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 
 from PIL import Image
-import h5py
+from .bags_io import load_bag, resolve_bag_path
 
 class Whole_Slide_Bag(Dataset):
 	def __init__(self,
