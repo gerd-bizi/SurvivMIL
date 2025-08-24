@@ -8,7 +8,7 @@ from lightning.pytorch.loggers import WandbLogger
 import argparse
 import warnings
 from data_module import histo_DataModule
-from transabmil import TransABMIL
+# from transabmil import TransABMIL
 from pathlib import Path
 from tqdm import tqdm
 import pandas as pd

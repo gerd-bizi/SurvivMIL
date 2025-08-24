@@ -10,7 +10,7 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset
 
-from survivmil.bags_io import load_bag, resolve_bag_path
+from bags_io import load_bag, resolve_bag_path
 
 
 class Dataset_All_Bags(Dataset):

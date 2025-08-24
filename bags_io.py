@@ -14,7 +14,15 @@ def _load_npy(path: str):
     """
     feats = np.load(path, allow_pickle=False)
     # To get coords, we read from file name
-    coords = np.array([int(x) for x in path.split("_")[-2:]])
+    # Extract the last two parts, strip 'x' or 'y' and the '.npy' extension if present
+    coord_strs = path.split("_")[-2:]
+    coords = []
+    for s in coord_strs:
+        # Remove file extension if present (e.g., 'y12345.npy' -> 'y12345')
+        s = s.split(".")[0]
+        # Remove leading 'x' or 'y'
+        coords.append(int(s[1:]))
+    coords = np.array(coords)
     return feats, coords
 
 
