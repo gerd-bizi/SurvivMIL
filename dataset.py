@@ -64,7 +64,12 @@ class histodata(Dataset):
         if "slide_id" in self.df.columns:
             id_series = self.df["slide_id"].astype(str)
         elif "patient_id" in self.df.columns:
-            id_series = self.df["patient_id"].astype(str)
+            # Patient IDs in the fold CSVs are of the form ``x_y`` while the
+            # feature directories are prefixed with ``TMA_``.  Normalise here so
+            # downstream code always works with the ``TMA_x_y`` form.
+            id_series = self.df["patient_id"].astype(str).apply(
+                lambda s: s if s.startswith("TMA_") else f"TMA_{s}"
+            )
         elif "0" in self.df.columns:
             # Column '0' historically stored a path to a file. We use its basename as the bag stem.
             id_series = self.df["0"].astype(str).apply(lambda p: Path(p).stem)
@@ -100,7 +105,10 @@ class histodata(Dataset):
         if "slide_id" in self.df.columns:
             row = self.df[self.df["slide_id"].astype(str) == stem]
         elif "patient_id" in self.df.columns:
-            row = self.df[self.df["patient_id"].astype(str) == stem]
+            # ``stem`` may have the ``TMA_`` prefix; remove it when matching to
+            # the raw ``patient_id`` column.
+            clean = stem[4:] if stem.startswith("TMA_") else stem
+            row = self.df[self.df["patient_id"].astype(str) == clean]
         elif "0" in self.df.columns:
             row = self.df[self.df["0"].astype(str).apply(lambda p: Path(p).stem) == stem]
         else:
