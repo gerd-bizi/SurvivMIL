@@ -10,6 +10,7 @@ import pytorch_lightning as pl
 import torch
 import torch.utils.data
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 from dataset import histodata
 
@@ -108,12 +109,19 @@ class histo_DataModule(pl.LightningDataModule):
                 shuffle=False,
             )
 
+            print(
+                f"Finished loading datasets: "
+                f"{len(self.train_dset)} train / "
+                f"{len(self.val_dset)} val / "
+                f"{len(self.test_dset)} test bags"
+            )
+
     def calculate_weights(self):
         # NOTE: This assumes d[1][0] is a single-class label tensor.
         print("Calculating weights for weighted random sampler")
         dloader = DataLoader(self.train_dset, batch_size=1, shuffle=False)
         labels = []
-        for d in dloader:
+        for d in tqdm(dloader, desc="Computing class weights"):
             labels.append(d[1][0].item())
         labels = np.asarray(labels, dtype=int)
         class_counts = np.bincount(labels)
@@ -132,6 +140,7 @@ class histo_DataModule(pl.LightningDataModule):
                replacement=True,
             ),
             collate_fn=collate_fn,
+            num_workers=getattr(self.args, "num_workers", 0),
         )
 
     def val_dataloader(self):
@@ -140,6 +149,7 @@ class histo_DataModule(pl.LightningDataModule):
             batch_size=self.batch_size,
             shuffle=False,
             collate_fn=collate_fn,
+            num_workers=getattr(self.args, "num_workers", 0),
         )
 
     def test_dataloader(self):
@@ -148,6 +158,7 @@ class histo_DataModule(pl.LightningDataModule):
             batch_size=self.batch_size,
             shuffle=False,
             collate_fn=collate_fn,
+            num_workers=getattr(self.args, "num_workers", 0),
         )
 
     def predict_dataloader(self):
@@ -156,5 +167,5 @@ class histo_DataModule(pl.LightningDataModule):
             batch_size=self.batch_size,
             shuffle=False,
             collate_fn=collate_fn,
-            num_workers=31,
+            num_workers=getattr(self.args, "num_workers", 0),
         )
