@@ -51,6 +51,24 @@ class histodata(Dataset):
 
         self.df = pd.read_csv(self.csv_path)
 
+        # Map the CSV schema used in this project to the column names expected
+        # by the original code. ``recurrence_bin`` carries both the
+        # classification label and the survival event indicator while
+        # ``duration_months`` stores the follow-up time.  A spurious
+        # ``wsi_placeholder`` column can appear and is ignored.
+        # This normalization allows downstream code to consume clinical CSVs
+        # without needing project-specific preprocessing hooks.
+        if "wsi_placeholder" in self.df.columns:
+            self.df = self.df.drop(columns=["wsi_placeholder"])
+        if "recurrence_bin" in self.df.columns:
+            if "label" not in self.df.columns:
+                self.df["label"] = self.df["recurrence_bin"].astype(int)
+            if "outcome" not in self.df.columns:
+                self.df["outcome"] = self.df["recurrence_bin"].astype(int)
+        if "duration_months" in self.df.columns and "survival_days" not in self.df.columns:
+            # Keep the units (months) but expose under the expected name.
+            self.df["survival_days"] = self.df["duration_months"].astype(float)
+
         # ---- Split handling -------------------------------------------------
         # Accept either 'Splits' (your legacy) or 'split' (modern).
         split_col = "Splits" if "Splits" in self.df.columns else ("split" if "split" in self.df.columns else None)
@@ -106,9 +124,25 @@ class histodata(Dataset):
         self.has_outcome = "outcome" in self.df.columns
         self.has_time = "survival_days" in self.df.columns
 
-        # EHR example columns from your legacy code; safe if absent.
-        self.has_mycn = "Mycn Status" in self.df.columns
-        self.has_age = "patient_age_at_biopsy_months" in self.df.columns
+        # Determine which columns will be treated as EHR features.  Exclude ID
+        # and target columns, keeping only numeric data.
+        reserved = {
+            "slide_id",
+            "patient_id",
+            "bag_stem",
+            "Splits",
+            "split",
+            "label",
+            "outcome",
+            "survival_days",
+            "recurrence_bin",
+            "duration_months",
+        }
+        self.ehr_cols = [
+            c
+            for c in self.df.columns
+            if c not in reserved and np.issubdtype(self.df[c].dtype, np.number)
+        ]
 
     def __len__(self):
         return len(self.bag_stems)
@@ -131,15 +165,14 @@ class histodata(Dataset):
         return row.iloc[0]
 
     def _ehr_from_row(self, row: pd.Series) -> torch.Tensor:
-        # Minimal EHR vector, robust to missing columns
-        vals = []
-        if self.has_mycn:
-            vals.append(float(row["Mycn Status"]))
-        if self.has_age:
-            vals.append(float(row["patient_age_at_biopsy_months"]))
-        if not vals:
-            # Always return a tensor (empty if nothing to add)
+        """Extract an EHR feature vector for a patient.
+
+        All numeric columns not reserved for IDs or targets are included.  Any
+        missing values are filled with zeros to keep tensor shapes consistent.
+        """
+        if not getattr(self, "ehr_cols", None):
             return torch.zeros(0, dtype=torch.float32)
+        vals = row[self.ehr_cols].astype(float).fillna(0).to_numpy()
         return torch.tensor(vals, dtype=torch.float32)
 
     def __getitem__(self, idx: int):
