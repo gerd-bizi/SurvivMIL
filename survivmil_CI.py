@@ -107,10 +107,17 @@ class BClassifier(nn.Module):
 
 
 class EHRClassifier(nn.Module):
+    """Simple MLP for tabular EHR features.
+
+    All input columns are treated as continuous.  Any categorical encoding
+    should be handled upstream in the dataset.  The network is intentionally
+    lightweight as the EHR feature dimensionality is small compared to the
+    histology stream.
+    """
+
     def __init__(self, ehr_input_size=2, ehr_output_size=4, temperature=1.0):
         super(EHRClassifier, self).__init__()
-        self.embedding = nn.Embedding(2, 4)  # Assuming embedding size of 4, can be adjusted
-        self.fc1 = nn.Linear(5, 16)  # 1 continuous + 4 embedding dimensions
+        self.fc1 = nn.Linear(ehr_input_size, 16)
         self.fc2 = nn.Linear(16, ehr_output_size)
         self.ln = nn.LayerNorm(ehr_output_size)
         self.sigmoid = nn.Sigmoid()
@@ -124,13 +131,8 @@ class EHRClassifier(nn.Module):
         nn.init.zeros_(self.fc2.bias)
 
     def forward(self, x):
-        x_flattened = x.view(x.size(0), -1)
-        continuous_var = x_flattened[:, 1].unsqueeze(1).float() 
-        categorical_var = x_flattened[:, 0].long()  
-        
-        embedded_cat = self.embedding(categorical_var)
-        x = torch.cat((continuous_var, embedded_cat), dim=1)
-        x = torch.relu(self.fc1(x))
+        x_flattened = x.view(x.size(0), -1).float()
+        x = torch.relu(self.fc1(x_flattened))
         logits = self.fc2(x) / self.temperature
         logits = self.ln(logits)
         probabilities = self.sigmoid(logits)

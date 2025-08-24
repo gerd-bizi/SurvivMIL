@@ -219,7 +219,7 @@ def get_args():
     return parser.parse_args()
 
 
-def build_model(args):
+def build_model(args, ehr_input_size=None):
     if args.model_type == "SURVIVMIL":
         i_class = "i_class"
     if args.model_type == "MCAT":
@@ -277,12 +277,13 @@ def build_model(args):
     elif args.model_type == 'SURVIVMIL':
         model = SURVIVMIL(
             multimodal = args.multimodal,
-            lossweight = args.lossweight, 
+            lossweight = args.lossweight,
             num_classes=args.num_classes,
             criterion=criterion,
             model_type=args.model_type,
             log_dir=args.log_dir,
             output_class=output_class,
+            ehr_input_size=ehr_input_size,
         )
 
     elif args.model_type == 'DSMIL':
@@ -373,7 +374,9 @@ def train(args):
     )
 
     smpeds_data.setup()
-    model = build_model(args)
+    ehr_input_size = len(smpeds_data.train_dset.ehr_cols)
+    print(f"EHR variables used for classifier: {smpeds_data.train_dset.ehr_cols}")
+    model = build_model(args, ehr_input_size=ehr_input_size)
 
     if args.logger == "wandb":
         logger = WandbLogger(
