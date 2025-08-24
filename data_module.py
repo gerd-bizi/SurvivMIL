@@ -107,6 +107,12 @@ class histo_DataModule(pl.LightningDataModule):
                 state="test",
                 shuffle=False,
             )
+            print(
+                f"Finished loading datasets: "
+                f"{len(self.train_dset)} train / "
+                f"{len(self.val_dset)} val / "
+                f"{len(self.test_dset)} test bags"
+            )
 
     def calculate_weights(self):
         # NOTE: This assumes d[1][0] is a single-class label tensor.
