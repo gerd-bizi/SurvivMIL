@@ -132,6 +132,7 @@ class histo_DataModule(pl.LightningDataModule):
                replacement=True,
             ),
             collate_fn=collate_fn,
+            num_workers=self.args.num_workers,
         )
 
     def val_dataloader(self):
@@ -140,6 +141,7 @@ class histo_DataModule(pl.LightningDataModule):
             batch_size=self.batch_size,
             shuffle=False,
             collate_fn=collate_fn,
+            num_workers=self.args.num_workers,
         )
 
     def test_dataloader(self):
@@ -148,6 +150,7 @@ class histo_DataModule(pl.LightningDataModule):
             batch_size=self.batch_size,
             shuffle=False,
             collate_fn=collate_fn,
+            num_workers=self.args.num_workers,
         )
 
     def predict_dataloader(self):
@@ -156,5 +159,5 @@ class histo_DataModule(pl.LightningDataModule):
             batch_size=self.batch_size,
             shuffle=False,
             collate_fn=collate_fn,
-            num_workers=31,
+            num_workers=self.args.num_workers,
         )
