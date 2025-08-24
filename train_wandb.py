@@ -80,7 +80,7 @@ def get_args():
     parser.add_argument(
         "--input_size",
         type=int,
-        default=1024, 
+        default=1536, 
         help="Hidden dimension of projection head",
     )
     parser.add_argument(

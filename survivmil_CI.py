@@ -29,7 +29,7 @@ class FCLayer(nn.Module):
 
 
 class IClassifier(nn.Module):
-    def __init__(self, feature_size=1024, output_class=4):
+    def __init__(self, feature_size=1536, output_class=4):
         super(IClassifier, self).__init__()
 
         self.fc = nn.Linear(feature_size, output_class)
@@ -48,8 +48,8 @@ class IClassifier(nn.Module):
 class BClassifier(nn.Module):
     def __init__(
         self,
-        input_size=1024,
-        
+        # input_size=1024,
+        input_size=1536,
         output_class=4,
         dropout_v=0.0,
         nonlinear=True,
