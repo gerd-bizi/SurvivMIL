@@ -76,8 +76,21 @@ class histodata(Dataset):
         else:
             raise ValueError("CSV must contain one of: 'slide_id', 'patient_id', or a path column named '0'.")
 
-        # Bag stems (filenames without extension)
-        self.bag_stems = id_series.unique().tolist()
+        # Normalised bag stems and pruning of missing feature directories/files
+        self.df["bag_stem"] = id_series
+        stems = self.df["bag_stem"].unique().tolist()
+        existing, missing = [], []
+        for stem in stems:
+            try:
+                resolve_bag_path(self.features_dir, stem)
+            except FileNotFoundError:
+                missing.append(stem)
+            else:
+                existing.append(stem)
+        if missing:
+            # Drop rows for patients with no corresponding features
+            self.df = self.df[~self.df["bag_stem"].isin(missing)].reset_index(drop=True)
+        self.bag_stems = existing
 
         if self.shuffle_instances:
             random.shuffle(self.bag_stems)
