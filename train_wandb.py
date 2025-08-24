@@ -2,7 +2,11 @@ import os
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
+from pytorch_lightning.callbacks import (
+    LearningRateMonitor,
+    ModelCheckpoint,
+    TQDMProgressBar,
+)
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from lightning.pytorch.loggers import WandbLogger
 import argparse
@@ -360,6 +364,7 @@ def train(args):
     )
     
     lr_monitor = LearningRateMonitor(logging_interval="step")
+    pb = TQDMProgressBar(refresh_rate=20)
 
     smpeds_data = histo_DataModule(
         csv_path=args.csv_dir,
@@ -395,10 +400,11 @@ def train(args):
         accelerator="gpu",
         devices=args.num_gpus,
         max_epochs=args.max_epochs,
-        callbacks=[early_stop_callback, checkpoint_callback, lr_monitor],
+        callbacks=[early_stop_callback, checkpoint_callback, lr_monitor, pb],
         default_root_dir=args.log_dir,
         logger=logger,
         num_sanity_val_steps=0,
+        log_every_n_steps=20,
     )
     trainer.fit(model, smpeds_data)
     print(f"Finished training for the prediction of patient outcome")
