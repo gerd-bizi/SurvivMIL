@@ -10,6 +10,7 @@ import pytorch_lightning as pl
 import torch
 import torch.utils.data
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 from dataset import histodata
 
@@ -113,7 +114,7 @@ class histo_DataModule(pl.LightningDataModule):
         print("Calculating weights for weighted random sampler")
         dloader = DataLoader(self.train_dset, batch_size=1, shuffle=False)
         labels = []
-        for d in dloader:
+        for d in tqdm(dloader, desc="Computing class weights"):
             labels.append(d[1][0].item())
         labels = np.asarray(labels, dtype=int)
         class_counts = np.bincount(labels)
