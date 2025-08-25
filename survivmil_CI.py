@@ -151,7 +151,10 @@ class MILNet(nn.Module):
 
         self.i_classifier = IClassifier(output_class=output_class)
         self.b_classifier = BClassifier(output_class=output_class)
-        self.ehr_classifier = EHRClassifier(ehr_input_size=ehr_input_size)
+        # ensure the EHR classifier predicts the same number of classes as the MIL branches
+        self.ehr_classifier = EHRClassifier(
+            ehr_input_size=ehr_input_size, ehr_output_size=output_class
+        )
         self.ln = nn.LayerNorm(output_class)
 
     def forward(self, x):
@@ -322,15 +325,22 @@ class SURVIVMIL(pl.LightningModule):
         return loss_c_index
     
 
-    def calculate_loss_survival(self, inputs, labels, num_classes=2):
+    def calculate_loss_survival(self, inputs, labels, num_classes=None):
         feats, ehr = inputs[0], inputs[1]
         label, time_to_event, c = labels[0], labels[1], labels[2]
+
+        # default to the module's configured number of classes
+        if num_classes is None:
+            num_classes = self.num_classes
+
         output = self.model((torch.squeeze(feats).float(), torch.squeeze(ehr).float()))
-        classes, bag_prediction, ehr_pred = output[0], output[1], output[5]
+        classes, bag_prediction, ehr_pred = output[0], output[1], output[4]
         max_prediction, index = torch.max(classes, 0)
 
         if self.multimodal == 'all':
-            multi_stream_prediction = self.lossweight*bag_prediction + (1 - self.lossweight)*ehr_pred
+            multi_stream_prediction = (
+                self.lossweight * bag_prediction + (1 - self.lossweight) * ehr_pred
+            )
         elif self.multimodal == 'wsi':
             multi_stream_prediction = bag_prediction
         elif self.multimodal == 'ehr':
@@ -338,20 +348,26 @@ class SURVIVMIL(pl.LightningModule):
         else:
             print('Not a valid modality provided -- either (all, wsi, ehr)')
 
+        hazard = torch.sigmoid(multi_stream_prediction)
         if num_classes > 2:
-            hazard = torch.sigmoid(multi_stream_prediction)
-            y_hat = torch.topk(multi_stream_prediction, 1, dim = 1)[1]
+            y_hat = torch.topk(multi_stream_prediction, 1, dim=1)[1]
         else:
-            hazard = torch.sigmoid(multi_stream_prediction)
             y_hat = hazard > 0.5
 
-        surv_pred = torch.cumprod(1 - hazard, dim = 1)
+        surv_pred = torch.cumprod(1 - hazard, dim=1)
 
-
-        label = label.view(-1, 1).float()
-        loss_bag = self.criterion(bag_prediction, label)
-        loss_ehr = self.criterion(ehr_pred, label)
-        loss_max = self.criterion(max_prediction.unsqueeze(0), label.view(-1))
+        if num_classes > 2:
+            # Cross-entropy expects class indices with shape [N]
+            label = label.view(-1).long()
+            loss_bag = self.criterion(bag_prediction, label)
+            loss_ehr = self.criterion(ehr_pred, label)
+            loss_max = self.criterion(max_prediction.unsqueeze(0), label)
+        else:
+            # Binary classification requires matching shapes
+            label = label.view(-1, 1).float()
+            loss_bag = self.criterion(bag_prediction, label)
+            loss_ehr = self.criterion(ehr_pred, label)
+            loss_max = self.criterion(max_prediction.unsqueeze(0), label.view(-1))
 
         if self.multimodal == 'all':
             multi_stream_loss = (0.5 * (loss_bag + loss_max)) + (loss_ehr)
