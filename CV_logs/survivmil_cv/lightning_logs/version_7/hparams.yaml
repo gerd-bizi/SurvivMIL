@@ -1,0 +1,11 @@
+alpha: 0.0
+buffer_size: 142
+ehr_input_size: 64
+log_dir: CV_logs/survivmil_cv
+lossweight: 0.5
+max_epochs: 100
+model_type: SURVIVMIL
+multimodal: all
+num_classes: 2
+output_class: 1
+prob_transform: 0.5

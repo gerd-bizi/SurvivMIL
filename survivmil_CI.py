@@ -348,8 +348,9 @@ class SURVIVMIL(pl.LightningModule):
         surv_pred = torch.cumprod(1 - hazard, dim = 1)
 
 
-        loss_bag = self.criterion(bag_prediction, label.view(-1))
-        loss_ehr = self.criterion(ehr_pred, label.view(-1))
+        label = label.view(-1, 1).float()
+        loss_bag = self.criterion(bag_prediction, label)
+        loss_ehr = self.criterion(ehr_pred, label)
         loss_max = self.criterion(max_prediction.unsqueeze(0), label.view(-1))
 
         if self.multimodal == 'all':
