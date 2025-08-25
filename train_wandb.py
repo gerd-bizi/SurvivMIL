@@ -215,6 +215,12 @@ def get_args():
         choices=["all", "wsi", "ehr"],
         help="Modalities used for training",
     )
+    parser.add_argument(
+        "--weights_cache",
+        type=str,
+        default=None,
+        help="Optional path to cache class weights for weighted sampling",
+    )
 
     return parser.parse_args()
 
@@ -371,6 +377,7 @@ def train(args):
         sub_aug_type=args.sub_aug_type,
         concat = args.concat,
         args=args,
+        weights_cache=args.weights_cache,
     )
 
     smpeds_data.setup()

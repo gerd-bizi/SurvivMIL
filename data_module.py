@@ -33,6 +33,7 @@ class histo_DataModule(pl.LightningDataModule):
         sub_aug_type=None,
         args=None,
         concat=None,
+        weights_cache=None,
     ):
         super().__init__()
         self.h5_path = h5_path
@@ -44,6 +45,7 @@ class histo_DataModule(pl.LightningDataModule):
         self.sub_aug_type = sub_aug_type
         self.args = args
         self.concat = concat
+        self.weights_cache = weights_cache
         self._combined_csv = None
 
     def _prepare_csv(self) -> str | None:
@@ -117,18 +119,24 @@ class histo_DataModule(pl.LightningDataModule):
             )
 
     def calculate_weights(self):
-        # NOTE: This assumes d[1][0] is a single-class label tensor.
         print("Calculating weights for weighted random sampler")
-        dloader = DataLoader(self.train_dset, batch_size=1, shuffle=False)
-        labels = []
-        for d in tqdm(dloader, desc="Computing class weights"):
-            labels.append(d[1][0].item())
-        labels = np.asarray(labels, dtype=int)
-        class_counts = np.bincount(labels)
-        class_weights = 1.0 / np.maximum(class_counts, 1)
-        weights = class_weights[labels]
+
+        df = self.train_dset.df.set_index("bag_stem")
+        labels = df.loc[self.train_dset.bag_stems, "label"].astype(int).to_numpy()
+
+        if self.weights_cache and os.path.exists(self.weights_cache):
+            class_weights = np.load(self.weights_cache)
+            print(f"Loaded class weights from cache: {self.weights_cache}")
+        else:
+            class_counts = np.bincount(labels)
+            class_weights = 1.0 / np.maximum(class_counts, 1)
+            if self.weights_cache:
+                np.save(self.weights_cache, class_weights)
+                print(f"Saved class weights to cache: {self.weights_cache}")
+
+        weights = class_weights[labels].astype(np.float32)
         print("Weights calculated")
-        return torch.from_numpy(weights.astype(np.float32))
+        return torch.from_numpy(weights)
 
     def train_dataloader(self):
         return DataLoader(
